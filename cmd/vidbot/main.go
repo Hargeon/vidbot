@@ -10,10 +10,13 @@ import (
 	"syscall"
 
 	"github.com/Hargeon/vidbot/pkg/cache"
+	"github.com/Hargeon/vidbot/pkg/service/broker"
+	"github.com/Hargeon/vidbot/pkg/service/storage"
 	"github.com/Hargeon/vidbot/pkg/service/telegram"
+	tgConsumer "github.com/Hargeon/vidbot/pkg/service/telegram/consumer"
 	"github.com/Hargeon/vidbot/pkg/service/videocmprs"
-	"github.com/go-redis/redis/v8"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
 )
 
@@ -44,6 +47,19 @@ func setup() error {
 		return nil
 	}
 
+	// connect to rabbit
+	consumer := broker.NewRabbit(os.Getenv("RABBIT_URL"))
+	consumerConn, err := consumer.Connect("telegram")
+	if err != nil {
+		return err
+	}
+	defer consumerConn.Close()
+
+	msgs, err := consumer.Consume()
+	if err != nil {
+		return err
+	}
+
 	rCtx := &RespondedContext{
 		done: make(chan bool),
 	}
@@ -68,6 +84,16 @@ func setup() error {
 	if err != nil {
 		return err
 	}
+
+	msgConsumer := &tgConsumer.Consumer{
+		BotClient: bot.BotClient,
+		Msgs:      msgs,
+		Store: *storage.NewAWSS3(os.Getenv("AWS_BUCKET_NAME"),
+			os.Getenv("AWS_REGION"), os.Getenv("AWS_ACCESS_KEY"),
+			os.Getenv("AWS_SECRET_KEY")),
+	}
+
+	go msgConsumer.HandleMessages()
 
 	go bot.ReadMessages()
 
