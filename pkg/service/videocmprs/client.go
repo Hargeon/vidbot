@@ -1,3 +1,4 @@
+// Package videocmprs uses like videocmprs client
 package videocmprs
 
 import (
@@ -79,10 +80,14 @@ func (c *Client) Authenticate(chatID int64) (string, error) {
 }
 
 // Registration telegram account
-func (c *Client) Registration(chatID int64, token string) error {
+func (c *Client) Registration(chatID int64, email string) error {
+	client := http.Client{
+		Timeout: timeOut,
+	}
+
 	tg := &Account{
 		ChatID: chatID,
-		Token:  token,
+		Email:  email,
 	}
 
 	buf := new(bytes.Buffer)
@@ -91,10 +96,7 @@ func (c *Client) Registration(chatID int64, token string) error {
 		return err
 	}
 
-	client := http.Client{
-		Timeout: timeOut,
-	}
-
+	token := c.generateTgToken(buf.String())
 	url := os.Getenv("SERVICE_URL") + "/tg_accounts"
 
 	req, err := http.NewRequest(http.MethodPost, url, buf)
@@ -104,6 +106,7 @@ func (c *Client) Registration(chatID int64, token string) error {
 
 	req.Header.Add("Content-Type", contentType)
 	req.Header.Add("Accept", contentType)
+	req.Header.Add(telegramHeader, token)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -155,8 +158,6 @@ func (c *Client) SendVideo(file *os.File, tokenAuth string, req *Request) error 
 	}
 
 	url := os.Getenv("SERVICE_URL") + "/requests"
-	fmt.Println("URL", url)
-	fmt.Println("req body", bodyBuf.Len())
 	request, err := http.NewRequest(http.MethodPost, url, bodyBuf)
 	if err != nil {
 		return err

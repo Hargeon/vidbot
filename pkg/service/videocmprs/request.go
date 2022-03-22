@@ -1,5 +1,6 @@
 package videocmprs
 
+// Request for compressing video
 type Request struct {
 	ID int64 `jsonapi:"primary,requests"`
 
