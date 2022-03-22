@@ -10,9 +10,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-type Bot interface {
-}
-
 type MessageHandler interface {
 	Execute(int64, *videocmprs.Account, tgbotapi.Update)
 	SetNext(MessageHandler)
